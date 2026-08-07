@@ -1,0 +1,56 @@
+{
+  "app": {
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "certpath": "C:\\Users\\Lenovo\\.ohos\\config\\default_TabletopParty_z-wea-J0Omvs1P--kuDxRLWkqI2YNLpvCstR5NDPSiI=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001AE8DD8B973F4938EAB81BC607F015B8039E2B8CEBD416E5E193F1B69ED404462C020E1DE1A2B5",
+          "profile": "C:\\Users\\Lenovo\\.ohos\\config\\default_TabletopParty_z-wea-J0Omvs1P--kuDxRLWkqI2YNLpvCstR5NDPSiI=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "C:\\Users\\Lenovo\\.ohos\\config\\default_TabletopParty_z-wea-J0Omvs1P--kuDxRLWkqI2YNLpvCstR5NDPSiI=.p12",
+          "storePassword": "0000001A8A86A44CC767DE23549264E9304E4ECEB33EF0BB8F03E47CD0157D221449E6C71D0A0D79535A"
+        }
+      }
+    ],
+    "products": [
+      {
+        "name": "default",
+        "signingConfig": "default",
+        "targetSdkVersion": "6.0.2(22)",
+        "compatibleSdkVersion": "6.0.2(22)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      }
+    ],
+    "buildModeSet": [
+      {
+        "name": "debug",
+      },
+      {
+        "name": "release"
+      }
+    ]
+  },
+  "modules": [
+    {
+      "name": "entry",
+      "srcPath": "./entry",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
+    }
+  ]
+}

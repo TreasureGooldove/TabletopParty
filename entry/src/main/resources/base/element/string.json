@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "桌游派对近场多人游戏"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "桌游派对主入口"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "桌游派对"
+    },
+    {
+      "name": "nearlink_permission_reason",
+      "value": "用于发现身边的桌游房间并同步对局"
+    }
+  ]
+}

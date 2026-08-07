@@ -1,0 +1,13 @@
+{
+  "src": [
+    "pages/Index",
+    "pages/GameDetail",
+    "pages/Tutorial",
+    "pages/RoomLobby",
+    "pages/JoinRoom",
+    "pages/GameRoom",
+    "pages/ContentLibrary",
+    "pages/Stats",
+    "pages/Settings"
+  ]
+}

@@ -12,12 +12,28 @@ import {
 import { RoomEngine } from '../main/ets/core/RoomEngine';
 import { GameCatalog } from '../main/ets/games/GameCatalog';
 import { GameRegistry } from '../main/ets/games/GameRegistry';
+import { LandlordPattern, LandlordPatternType, LandlordRules } from '../main/ets/games/LandlordRules';
 
 function twoPlayers(): RoomPlayer[] {
   const players: RoomPlayer[] = [];
   players.push(new RoomPlayer('p0', '甲', 1, true));
   players.push(new RoomPlayer('p1', '乙', 2, false));
   return players;
+}
+
+function climbingPower(card: string): number {
+  if (card === '大王') {
+    return 14;
+  }
+  if (card === '小王') {
+    return 13;
+  }
+  return ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'].indexOf(card.substring(1));
+}
+
+function mahjongPower(tile: string): number {
+  const suit: number = ['条', '筒', '万'].indexOf(tile.substring(1));
+  return suit * 10 + Number(tile.substring(0, 1));
 }
 
 export default function gameEngineTest(): void {
@@ -192,6 +208,109 @@ export default function gameEngineTest(): void {
       expect(plugin.perform(new GameAction('pass', 'p1'), players).success).assertTrue();
       expect(plugin.perform(new GameAction('pass', 'p2'), players).success).assertTrue();
       expect(plugin.getView('p0', players).currentPlayerId).assertEqual('p0');
+    });
+
+    it('landlordRecognizesAndComparesCompleteCommonPatterns', 0, () => {
+      expect(LandlordRules.analyze(['♠3']).type).assertEqual(LandlordPatternType.SINGLE);
+      expect(LandlordRules.analyze(['♠4', '♥4']).type).assertEqual(LandlordPatternType.PAIR);
+      expect(LandlordRules.analyze(['♠5', '♥5', '♣5', '♦8']).type)
+        .assertEqual(LandlordPatternType.TRIPLE_SINGLE);
+      expect(LandlordRules.analyze(['♠6', '♥6', '♣6', '♦9', '♠9']).type)
+        .assertEqual(LandlordPatternType.TRIPLE_PAIR);
+      expect(LandlordRules.analyze(['♠3', '♥4', '♣5', '♦6', '♠7']).type)
+        .assertEqual(LandlordPatternType.STRAIGHT);
+      expect(LandlordRules.analyze(['♠3', '♥3', '♣4', '♦4', '♠5', '♥5']).type)
+        .assertEqual(LandlordPatternType.PAIR_STRAIGHT);
+      expect(LandlordRules.analyze(['♠3', '♥3', '♣3', '♠4', '♥4', '♣4']).type)
+        .assertEqual(LandlordPatternType.AIRPLANE);
+      expect(LandlordRules.analyze(['♠3', '♥3', '♣3', '♠4', '♥4', '♣4', '♦7', '♦8']).type)
+        .assertEqual(LandlordPatternType.AIRPLANE_SINGLE);
+      expect(LandlordRules.analyze(['♠3', '♥3', '♣3', '♠4', '♥4', '♣4',
+        '♦7', '♠7', '♦8', '♠8']).type).assertEqual(LandlordPatternType.AIRPLANE_PAIR);
+      expect(LandlordRules.analyze(['♠6', '♥6', '♣6', '♦6', '♠8', '♥9']).type)
+        .assertEqual(LandlordPatternType.FOUR_TWO);
+      expect(LandlordRules.analyze(['♠6', '♥6', '♣6', '♦6', '♠8', '♥8', '♠9', '♥9']).type)
+        .assertEqual(LandlordPatternType.FOUR_TWO_PAIR);
+      expect(LandlordRules.analyze(['♠9', '♥9', '♣9', '♦9']).type).assertEqual(LandlordPatternType.BOMB);
+      expect(LandlordRules.analyze(['小王', '大王']).type).assertEqual(LandlordPatternType.ROCKET);
+      expect(LandlordRules.analyze(['♠10', '♥J', '♣Q', '♦K', '♠A', '♥2']).type)
+        .assertEqual(LandlordPatternType.INVALID);
+
+      const lower: LandlordPattern = LandlordRules.analyze(['♠3', '♥4', '♣5', '♦6', '♠7']);
+      const higher: LandlordPattern = LandlordRules.analyze(['♠4', '♥5', '♣6', '♦7', '♠8']);
+      const wrongLength: LandlordPattern = LandlordRules.analyze(['♠4', '♥5', '♣6', '♦7', '♠8', '♥9']);
+      expect(LandlordRules.canBeat(higher, lower)).assertTrue();
+      expect(LandlordRules.canBeat(wrongLength, lower)).assertFalse();
+      expect(LandlordRules.canBeat(LandlordRules.analyze(['♠9', '♥9', '♣9', '♦9']), higher)).assertTrue();
+    });
+
+    it('landlordHintProducesALegalSmallestResponse', 0, () => {
+      const hand: string[] = ['大王', '小王', '♠9', '♥9', '♠8', '♥8', '♠4'];
+      const previous: string[] = ['♠7', '♥7'];
+      const indexes: number[] = LandlordRules.suggest(hand, previous, true);
+      const suggestion: LandlordPattern = LandlordRules.analyze(LandlordRules.cardsAt(hand, indexes));
+      expect(indexes.length).assertEqual(2);
+      expect(suggestion.type).assertEqual(LandlordPatternType.PAIR);
+      expect(suggestion.mainRank).assertEqual(LandlordRules.rank('♠8'));
+      expect(LandlordRules.canBeat(suggestion, LandlordRules.analyze(previous))).assertTrue();
+    });
+
+    it('landlordRedealsWhenNobodyCalls', 0, () => {
+      const players: RoomPlayer[] = twoPlayers();
+      players.push(new RoomPlayer('p2', '丙', 3, false));
+      const plugin: GamePlugin = GameRegistry.getInstance().create(GameId.LANDLORD);
+      expect(plugin.start(players, 2026).success).assertTrue();
+      expect(plugin.perform(new GameAction('bid', 'p0', '', '', 0), players).success).assertTrue();
+      expect(plugin.perform(new GameAction('bid', 'p1', '', '', 0), players).success).assertTrue();
+      expect(plugin.perform(new GameAction('bid', 'p2', '', '', 0), players).success).assertTrue();
+      const view: GameView = plugin.getView('p0', players);
+      expect(view.phase).assertEqual(RoomPhase.REVEAL);
+      expect(view.currentPlayerId).assertEqual('p0');
+      expect(view.hand.length).assertEqual(17);
+      expect(view.status.indexOf('重新发牌') >= 0).assertTrue();
+    });
+
+    it('landlordGeneratedActionsCanFinishAFullSeededGame', 0, () => {
+      const players: RoomPlayer[] = twoPlayers();
+      players.push(new RoomPlayer('p2', '丙', 3, false));
+      const plugin: GamePlugin = GameRegistry.getInstance().create(GameId.LANDLORD);
+      expect(plugin.start(players, 8080).success).assertTrue();
+      expect(plugin.perform(new GameAction('bid', 'p0', '', '', 3), players).success).assertTrue();
+      let guard: number = 0;
+      while (!plugin.isFinished() && guard < 200) {
+        const publicView: GameView = plugin.getView('p0', players);
+        const actorId: string = publicView.currentPlayerId;
+        const actorView: GameView = plugin.getView(actorId, players);
+        const indexes: number[] = LandlordRules.suggest(actorView.hand, actorView.tableCards, true);
+        const result = indexes.length > 0 ?
+          plugin.perform(new GameAction('play', actorId, indexes.join(',')), players) :
+          plugin.perform(new GameAction('pass', actorId), players);
+        expect(result.success).assertTrue();
+        guard += 1;
+      }
+      expect(plugin.isFinished()).assertTrue();
+      expect(guard < 200).assertTrue();
+    });
+
+    it('sortsCardAndMahjongHandsFromHighToLow', 0, () => {
+      const landlordPlayers: RoomPlayer[] = twoPlayers();
+      landlordPlayers.push(new RoomPlayer('p2', '丙', 3, false));
+      const landlord: GamePlugin = GameRegistry.getInstance().create(GameId.LANDLORD);
+      expect(landlord.start(landlordPlayers, 20260808).success).assertTrue();
+      const landlordHand: string[] = landlord.getView('p0', landlordPlayers).hand;
+      for (let index: number = 1; index < landlordHand.length; index += 1) {
+        expect(climbingPower(landlordHand[index - 1]) >= climbingPower(landlordHand[index])).assertTrue();
+      }
+
+      const mahjongPlayers: RoomPlayer[] = twoPlayers();
+      mahjongPlayers.push(new RoomPlayer('p2', '丙', 3, false));
+      mahjongPlayers.push(new RoomPlayer('p3', '丁', 4, false));
+      const mahjong: GamePlugin = GameRegistry.getInstance().create(GameId.SICHUAN_MAHJONG);
+      expect(mahjong.start(mahjongPlayers, 20260808).success).assertTrue();
+      const mahjongHand: string[] = mahjong.getView('p0', mahjongPlayers).hand;
+      for (let index: number = 1; index < mahjongHand.length; index += 1) {
+        expect(mahjongPower(mahjongHand[index - 1]) >= mahjongPower(mahjongHand[index])).assertTrue();
+      }
     });
 
     it('normalBoardAiReturnsLegalMoveWithinOneSecond', 0, () => {

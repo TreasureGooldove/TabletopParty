@@ -83,7 +83,8 @@ struct GameDetail {
           .height(38)
           .fontSize(24)
           .fontColor('#493022')
-          .backgroundColor('#F1E4CF')
+          .border({ width: 1, color: '#CCFFFFFF' })
+          .backgroundColor('#BFFFFFFF')
           .onClick(() => {
             router.back();
           })
@@ -95,6 +96,10 @@ struct GameDetail {
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 14, bottom: 10 })
+      .border({ width: { bottom: 1 }, color: '#66FFFFFF' })
+      .backgroundColor('#70FFFFFF')
+      .backgroundBlurStyle(BlurStyle.Thick)
+      .shadow({ radius: 18, color: '#140A254A', offsetY: 5 })
 
       Scroll() {
         Column({ space: 16 }) {
@@ -116,7 +121,9 @@ struct GameDetail {
           .width('100%')
           .padding(22)
           .borderRadius(24)
-          .backgroundColor('#FFFDF8')
+          .border({ width: 1, color: '#CCFFFFFF' })
+          .backgroundColor('#D9FFFFFF')
+          .shadow({ radius: 20, color: '#180A254A', offsetY: 7 })
 
           Column({ space: 10 }) {
             Text('玩法说明')
@@ -132,15 +139,18 @@ struct GameDetail {
           .alignItems(HorizontalAlign.Start)
           .padding(17)
           .borderRadius(20)
-          .backgroundColor('#FFFDF8')
+          .border({ width: 1, color: '#CCFFFFFF' })
+          .backgroundColor('#D9FFFFFF')
+          .shadow({ radius: 16, color: '#120A254A', offsetY: 5 })
 
           Button('教学模式 · 分步学习')
             .width('100%')
             .height(50)
             .fontSize(15)
-            .fontColor('#4A3426')
-            .border({ width: 1, color: '#C8A878' })
-            .backgroundColor('#F5E4C8')
+            .fontColor('#0A59F7')
+            .border({ width: 1, color: '#660A59F7' })
+            .backgroundColor('#BFFFFFFF')
+            .backgroundBlurStyle(BlurStyle.Thin)
             .onClick(() => {
               this.openTutorial();
             })
@@ -153,7 +163,8 @@ struct GameDetail {
               .height(46)
               .padding({ left: 12, right: 12 })
               .borderRadius(14)
-              .backgroundColor('#F7F0E5')
+              .border({ width: 1, color: '#B3FFFFFF' })
+              .backgroundColor('#99FFFFFF')
               .onChange((value: string) => {
                 this.nickname = value;
               })
@@ -178,7 +189,7 @@ struct GameDetail {
               Button('+')
                 .width(38)
                 .height(36)
-                .backgroundColor('#6B4330')
+                .backgroundColor('#0A59F7')
                 .onClick(() => {
                   this.adjustPlayers(1);
                 })
@@ -196,7 +207,7 @@ struct GameDetail {
               .width('100%')
               .height(50)
               .fontSize(15)
-              .backgroundColor('#6B4330')
+              .backgroundColor('#0A59F7')
               .onClick(() => {
                 this.createRoom();
               })
@@ -205,7 +216,9 @@ struct GameDetail {
           .alignItems(HorizontalAlign.Start)
           .padding(17)
           .borderRadius(20)
-          .backgroundColor('#FFFDF8')
+          .border({ width: 1, color: '#CCFFFFFF' })
+          .backgroundColor('#D9FFFFFF')
+          .shadow({ radius: 16, color: '#120A254A', offsetY: 5 })
         }
         .width('100%')
         .padding({ left: 16, right: 16, bottom: 30 })
@@ -214,6 +227,10 @@ struct GameDetail {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FAF4E9')
+    .linearGradient({
+      direction: GradientDirection.Bottom,
+      repeating: false,
+      colors: [['#F8FBFF', 0.0], ['#EAF2FF', 0.5], ['#FAF4E9', 1.0]]
+    })
   }
 }

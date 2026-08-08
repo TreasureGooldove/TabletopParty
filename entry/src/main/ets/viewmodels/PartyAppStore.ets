@@ -60,8 +60,8 @@ export class PartyAppStore {
     try {
       const mainWindow: window.Window = await window.getLastWindow(this.abilityContext);
       await mainWindow.setPreferredOrientation(enabled ? window.Orientation.AUTO_ROTATION_LANDSCAPE :
-        window.Orientation.AUTO_ROTATION);
-      return new ActionResult(true, enabled ? '已切换为横屏对局' : '已恢复自动旋转');
+        window.Orientation.AUTO_ROTATION_PORTRAIT);
+      return new ActionResult(true, enabled ? '已切换为横屏对局' : '已恢复竖屏界面');
     } catch (error) {
       return new ActionResult(false, '当前窗口暂不支持切换方向');
     }

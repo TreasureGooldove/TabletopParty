@@ -10,6 +10,7 @@ import {
 } from '../core/GameContracts';
 import { RoomSession } from '../core/RoomEngine';
 import { PartyAppStore } from '../viewmodels/PartyAppStore';
+import { LandlordRules } from '../games/LandlordRules';
 
 @Entry
 @Component
@@ -33,6 +34,15 @@ struct GameRoom {
     this.store.setGameFullscreen(true).catch(() => {
       return;
     });
+    if (this.requiresLandscape()) {
+      this.store.setGameLandscape(true).then((result: ActionResult) => {
+        if (result.success) {
+          this.landscapeRequested = true;
+        }
+      }).catch(() => {
+        this.message = '当前设备无法切换横屏，请开启系统自动旋转';
+      });
+    }
   }
 
   aboutToDisappear(): void {
@@ -114,9 +124,30 @@ struct GameRoom {
     return this.pageWidth > this.pageHeight;
   }
 
+  private isLargeLandscapeTable(): boolean {
+    return this.isLandscapeLayout() && this.pageWidth >= 1100;
+  }
+
+  private climbingHandCardWidth(): number {
+    return this.isLargeLandscapeTable() ? 104 : (this.isLandscapeLayout() ? 54 : 58);
+  }
+
+  private climbingHandCardHeight(): number {
+    return this.isLargeLandscapeTable() ? 154 : (this.isLandscapeLayout() ? 82 : 86);
+  }
+
+  private climbingHandHeight(): number {
+    return this.isLargeLandscapeTable() ? 176 : (this.isLandscapeLayout() ? 94 : 100);
+  }
+
   private supportsLandscapeTable(): boolean {
     return this.view.gameId === GameId.LANDLORD || this.view.gameId === GameId.SICHUAN_MAHJONG ||
-      this.view.gameId === GameId.CHINESE_CHESS;
+      this.view.gameId === GameId.GUANDAN || this.view.gameId === GameId.CHINESE_CHESS ||
+      this.view.gameId === GameId.JUNQI;
+  }
+
+  private requiresLandscape(): boolean {
+    return this.supportsLandscapeTable();
   }
 
   private toggleLandscape(): void {
@@ -208,8 +239,26 @@ struct GameRoom {
     return card.indexOf('♥') === 0 || card.indexOf('♦') === 0 || card === '大王' ? '#C7352C' : '#20241F';
   }
 
+  private currentClimbingRole(): string {
+    if (this.view.gameId === GameId.GUANDAN) {
+      return this.currentSeat % 2 === 0 ? '甲方搭档' : '乙方搭档';
+    }
+    return this.view.landlordSeat === this.currentSeat ? '地主' : '农民';
+  }
+
   private suggestLandlordCards(): void {
     if (this.view.hand.length === 0) {
+      return;
+    }
+    if (this.view.gameId === GameId.LANDLORD) {
+      const suggestions: number[] = LandlordRules.suggest(this.view.hand, this.view.tableCards, true);
+      if (suggestions.length === 0) {
+        this.selectedCardIndexes = [];
+        this.message = this.view.tableCards.length > 0 ? '当前没有可压过上一手的牌，可选择不出' : '暂无可用提示';
+        return;
+      }
+      this.selectedCardIndexes = suggestions;
+      this.message = '已按完整斗地主牌型选中建议牌';
       return;
     }
     let suggestion: number = 0;
@@ -839,15 +888,17 @@ struct GameRoom {
     if (card.length === 0) {
       Stack({ alignContent: Alignment.Center }) {
         Text('◇')
-          .fontSize(compact ? 20 : 26)
+          .fontSize(this.isLargeLandscapeTable() ? (compact ? 28 : 38) : (compact ? 20 : 26))
           .fontColor('#A9C8DB')
         Text('派')
           .fontSize(8)
           .fontWeight(FontWeight.Bold)
           .fontColor('#F1F7FA')
       }
-      .width(compact ? (this.isLandscapeLayout() ? 26 : 32) : 42)
-      .height(compact ? (this.isLandscapeLayout() ? 36 : 44) : 58)
+      .width(this.isLargeLandscapeTable() ? (compact ? 46 : 64) :
+        (compact ? (this.isLandscapeLayout() ? 32 : 36) : 46))
+      .height(this.isLargeLandscapeTable() ? (compact ? 64 : 92) :
+        (compact ? (this.isLandscapeLayout() ? 44 : 50) : 64))
       .borderRadius(compact ? 5 : 7)
       .border({ width: 1, color: '#DBEAF0' })
       .backgroundColor('#315F79')
@@ -855,16 +906,18 @@ struct GameRoom {
       Stack({ alignContent: Alignment.Center }) {
         Column({ space: 0 }) {
           Text(this.cardRank(card))
-            .fontSize(compact ? 10 : 13)
+            .fontSize(this.isLargeLandscapeTable() ? (compact ? 15 : 21) : (compact ? 11 : 15))
             .fontWeight(FontWeight.Bold)
             .fontColor(this.cardTextColor(card))
-          this.SuitSvg(card, compact ? 11 : 16)
+          this.SuitSvg(card, this.isLargeLandscapeTable() ? (compact ? 19 : 27) : (compact ? 13 : 18))
         }
         .alignItems(HorizontalAlign.Start)
-        .position({ x: 4, y: 3 })
+        .position({ x: this.isLargeLandscapeTable() ? 7 : 4, y: this.isLargeLandscapeTable() ? 6 : 3 })
       }
-      .width(compact ? (this.isLandscapeLayout() ? 26 : 32) : 42)
-      .height(compact ? (this.isLandscapeLayout() ? 36 : 44) : 58)
+      .width(this.isLargeLandscapeTable() ? (compact ? 46 : 64) :
+        (compact ? (this.isLandscapeLayout() ? 32 : 36) : 46))
+      .height(this.isLargeLandscapeTable() ? (compact ? 64 : 92) :
+        (compact ? (this.isLandscapeLayout() ? 44 : 50) : 64))
       .borderRadius(compact ? 5 : 7)
       .border({ width: 1, color: '#E3D7C4' })
       .backgroundColor('#FFFEF8')
@@ -877,7 +930,7 @@ struct GameRoom {
     Column({ space: 5 }) {
       Stack({ alignContent: Alignment.Center }) {
         Text(this.playerInitial(seat))
-          .fontSize(18)
+          .fontSize(this.isLargeLandscapeTable() ? 24 : 18)
           .fontWeight(FontWeight.Bold)
           .fontColor('#FFF8DF')
         if (this.view.landlordSeat === seat) {
@@ -890,14 +943,14 @@ struct GameRoom {
             .position({ x: 34, y: 0 })
         }
       }
-      .width(this.isLandscapeLayout() ? 38 : 48)
-      .height(this.isLandscapeLayout() ? 38 : 48)
+      .width(this.isLargeLandscapeTable() ? 56 : (this.isLandscapeLayout() ? 38 : 48))
+      .height(this.isLargeLandscapeTable() ? 56 : (this.isLandscapeLayout() ? 38 : 48))
       .borderRadius(24)
       .border({ width: this.view.currentPlayerId === this.players[seat].id ? 2 : 1,
         color: this.view.currentPlayerId === this.players[seat].id ? '#FFD86D' : '#8DB8A0' })
       .backgroundColor(side === 'left' ? '#447C8F' : '#8C6146')
       Text(this.playerName(seat))
-        .fontSize(10)
+        .fontSize(this.isLargeLandscapeTable() ? 14 : 10)
         .fontWeight(FontWeight.Bold)
         .fontColor('#FFF8E6')
         .maxLines(1)
@@ -914,10 +967,10 @@ struct GameRoom {
         }, (value: number) => value.toString())
       }
       Text(this.playerHandCount(seat).toString() + ' 张')
-        .fontSize(9)
+        .fontSize(this.isLargeLandscapeTable() ? 12 : 9)
         .fontColor('#D7E8DC')
     }
-    .width(this.isLandscapeLayout() ? 72 : 76)
+    .width(this.isLargeLandscapeTable() ? 102 : (this.isLandscapeLayout() ? 72 : 76))
   }
 
   @Builder
@@ -926,22 +979,23 @@ struct GameRoom {
       Stack({ alignContent: Alignment.Center }) {
         Column({ space: 0 }) {
           Text(this.cardRank(card))
-            .fontSize(this.isLandscapeLayout() ? 13 : 15)
+            .fontSize(this.isLargeLandscapeTable() ? 30 : (this.isLandscapeLayout() ? 17 : 18))
             .fontWeight(FontWeight.Bold)
             .fontColor(this.cardTextColor(card))
-          this.SuitSvg(card, this.isLandscapeLayout() ? 18 : 21)
+          this.SuitSvg(card, this.isLargeLandscapeTable() ? 40 : (this.isLandscapeLayout() ? 23 : 24))
         }
         .alignItems(HorizontalAlign.Start)
-        .position({ x: 5, y: 4 })
+        .position({ x: this.isLargeLandscapeTable() ? 10 : 6, y: this.isLargeLandscapeTable() ? 9 : 5 })
       }
       .width('100%')
       .height('100%')
     }
-    .width(this.isLandscapeLayout() ? 40 : 52)
-    .height(this.isLandscapeLayout() ? 58 : 78)
+    .width(this.climbingHandCardWidth())
+    .height(this.climbingHandCardHeight())
     .padding(0)
-    .margin({ right: -11, top: this.selectedCardIndexes.indexOf(index) >= 0 ? 0 : 11 })
-    .borderRadius(7)
+    .margin({ right: this.isLargeLandscapeTable() ? -30 : -13,
+      top: this.selectedCardIndexes.indexOf(index) >= 0 ? 0 : (this.isLargeLandscapeTable() ? 18 : 12) })
+    .borderRadius(this.isLargeLandscapeTable() ? 12 : 8)
     .border({ width: this.selectedCardIndexes.indexOf(index) >= 0 ? 3 : 1,
       color: this.selectedCardIndexes.indexOf(index) >= 0 ? '#FFCF57' : '#E1D5C1' })
     .backgroundColor('#FFFEF8')
@@ -955,12 +1009,14 @@ struct GameRoom {
   LandlordTable() {
     Column({ space: this.isLandscapeLayout() ? 3 : 10 }) {
       Row({ space: 8 }) {
-        Text('底牌')
+        Text(this.view.gameId === GameId.LANDLORD ? '底牌' : '掼蛋 · 对家搭档')
           .fontSize(10)
           .fontColor('#D6E8D9')
-        ForEach(this.view.bottomCards, (card: string, index: number) => {
-          this.PlayingCard(card, true)
-        }, (card: string, index: number) => index.toString() + card)
+        if (this.view.gameId === GameId.LANDLORD) {
+          ForEach(this.view.bottomCards, (card: string, index: number) => {
+            this.PlayingCard(card, true)
+          }, (card: string, index: number) => index.toString() + card)
+        }
         Blank()
         Text('倍数 ×' + this.view.multiplier.toString())
           .fontSize(12)
@@ -992,7 +1048,7 @@ struct GameRoom {
             .textAlign(TextAlign.Center)
             .maxLines(2)
         }
-        .height(this.isLandscapeLayout() ? 74 : 135)
+        .height(this.isLargeLandscapeTable() ? 126 : (this.isLandscapeLayout() ? 74 : 135))
         .justifyContent(FlexAlign.Center)
         .layoutWeight(1)
         this.LandlordSeat(this.relativeSeat(2), 'right')
@@ -1011,7 +1067,7 @@ struct GameRoom {
         .borderRadius(19)
         .backgroundColor('#5E4636')
         Column({ space: 1 }) {
-          Text(this.playerName(this.currentSeat) + (this.view.landlordSeat === this.currentSeat ? ' · 地主' : ' · 农民'))
+          Text(this.playerName(this.currentSeat) + ' · ' + this.currentClimbingRole())
             .fontSize(10)
             .fontWeight(FontWeight.Bold)
             .fontColor('#FFF8E6')
@@ -1034,7 +1090,7 @@ struct GameRoom {
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .width('100%')
-      .height(this.isLandscapeLayout() ? 64 : 94)
+      .height(this.climbingHandHeight())
 
       if (this.view.phase === RoomPhase.REVEAL) {
         Row({ space: 8 }) {
@@ -1080,11 +1136,12 @@ struct GameRoom {
       }
     }
     .width('100%')
-    .padding(this.isLandscapeLayout() ? 6 : 14)
-    .borderRadius(20)
-    .border({ width: 2, color: '#D2AE62' })
+    .height('100%')
+    .padding({ left: this.isLandscapeLayout() ? 12 : 14, right: this.isLandscapeLayout() ? 12 : 14,
+      top: this.isLandscapeLayout() ? 52 : 14, bottom: this.isLandscapeLayout() ? 31 : 14 })
+    .borderRadius(this.isLandscapeLayout() ? 0 : 20)
+    .border({ width: this.isLandscapeLayout() ? 0 : 2, color: '#D2AE62' })
     .backgroundColor('#246747')
-    .layoutWeight(1)
     .justifyContent(FlexAlign.SpaceBetween)
   }
 
@@ -1092,16 +1149,16 @@ struct GameRoom {
   MahjongTile(tile: string, compact: boolean = false) {
     Column({ space: 0 }) {
       Text(tile.substring(0, 1))
-        .fontSize(compact ? 11 : 17)
+        .fontSize(this.isLargeLandscapeTable() ? (compact ? 14 : 31) : (compact ? 10 : 21))
         .fontWeight(FontWeight.Bold)
         .fontColor(this.mahjongSuitColor(tile))
       Text(tile.substring(1))
-        .fontSize(compact ? 7 : 10)
+        .fontSize(this.isLargeLandscapeTable() ? (compact ? 9 : 17) : (compact ? 7 : 12))
         .fontWeight(FontWeight.Bold)
         .fontColor(this.mahjongSuitColor(tile))
     }
-    .width(compact ? 25 : 38)
-    .height(compact ? 34 : 52)
+    .width(this.isLargeLandscapeTable() ? (compact ? 34 : 68) : (compact ? 24 : 46))
+    .height(this.isLargeLandscapeTable() ? (compact ? 46 : 96) : (compact ? 32 : 64))
     .justifyContent(FlexAlign.Center)
     .borderRadius(compact ? 4 : 6)
     .border({ width: 1, color: '#D6C8A8' })
@@ -1114,26 +1171,26 @@ struct GameRoom {
     Column({ space: 3 }) {
       Stack({ alignContent: Alignment.Center }) {
         Text(this.playerInitial(seat))
-          .fontSize(16)
+          .fontSize(this.isLargeLandscapeTable() ? 20 : (this.isLandscapeLayout() ? 13 : 16))
           .fontWeight(FontWeight.Bold)
           .fontColor('#FFF5D8')
       }
-      .width(42)
-      .height(42)
-      .borderRadius(21)
+      .width(this.isLargeLandscapeTable() ? 46 : (this.isLandscapeLayout() ? 30 : 42))
+      .height(this.isLargeLandscapeTable() ? 46 : (this.isLandscapeLayout() ? 30 : 42))
+      .borderRadius(this.isLargeLandscapeTable() ? 23 : (this.isLandscapeLayout() ? 15 : 21))
       .border({ width: this.view.currentPlayerId === this.players[seat].id ? 2 : 1,
         color: this.view.currentPlayerId === this.players[seat].id ? '#FFDF76' : '#6FAE9B' })
       .backgroundColor('#34665B')
       Text(this.playerName(seat))
-        .fontSize(9)
+        .fontSize(this.isLargeLandscapeTable() ? 12 : (this.isLandscapeLayout() ? 8 : 9))
         .fontWeight(FontWeight.Bold)
         .fontColor('#FFF6DB')
         .maxLines(1)
       Text(this.playerHandCount(seat).toString() + ' 张 ' + this.playerMissingSuit(seat))
-        .fontSize(8)
+        .fontSize(this.isLargeLandscapeTable() ? 10 : (this.isLandscapeLayout() ? 7 : 8))
         .fontColor('#C9E2D7')
     }
-    .width(this.isLandscapeLayout() ? 78 : 62)
+    .width(this.isLargeLandscapeTable() ? 86 : (this.isLandscapeLayout() ? 60 : 62))
   }
 
   @Builder
@@ -1151,8 +1208,8 @@ struct GameRoom {
       .width('100%')
     }
     .width('48%')
-    .height(this.isLandscapeLayout() ? 72 : 82)
-    .padding(4)
+    .height(this.isLargeLandscapeTable() ? 104 : (this.isLandscapeLayout() ? 50 : 82))
+    .padding(this.isLargeLandscapeTable() ? 5 : (this.isLandscapeLayout() ? 2 : 4))
     .borderRadius(8)
     .backgroundColor('#1E5D5099')
   }
@@ -1162,10 +1219,10 @@ struct GameRoom {
     Button() {
       this.MahjongTile(tile, false)
     }
-    .width(40)
-    .height(62)
+    .width(this.isLargeLandscapeTable() ? 72 : 48)
+    .height(this.isLargeLandscapeTable() ? 108 : (this.isLandscapeLayout() ? 72 : 76))
     .padding(0)
-    .margin({ right: -2, top: this.selectedCardIndexes.indexOf(index) >= 0 ? 0 : 8 })
+    .margin({ right: -2, top: this.selectedCardIndexes.indexOf(index) >= 0 ? 0 : 9 })
     .backgroundColor('#00000000')
     .onClick(() => {
       if (this.isMultiSelectGame()) {
@@ -1178,11 +1235,11 @@ struct GameRoom {
 
   @Builder
   MahjongTable() {
-    Column({ space: this.isLandscapeLayout() ? 5 : 9 }) {
+    Column({ space: this.isLandscapeLayout() ? 3 : 9 }) {
       this.MahjongSeat(this.relativeSeat(2))
       Row() {
         this.MahjongSeat(this.relativeSeat(1))
-        Column({ space: 5 }) {
+        Column({ space: this.isLandscapeLayout() ? 3 : 5 }) {
           Row() {
             Text('东')
               .fontSize(16)
@@ -1208,7 +1265,7 @@ struct GameRoom {
           .justifyContent(FlexAlign.SpaceBetween)
         }
         .layoutWeight(1)
-        .padding(7)
+        .padding(this.isLandscapeLayout() ? 4 : 7)
         .borderRadius(15)
         .border({ width: 1, color: '#7DB29B' })
         .backgroundColor('#246B5A')
@@ -1244,13 +1301,13 @@ struct GameRoom {
       .scrollable(ScrollDirection.Horizontal)
       .scrollBar(BarState.Off)
       .width('100%')
-      .height(72)
+      .height(this.isLargeLandscapeTable() ? 118 : (this.isLandscapeLayout() ? 76 : 86))
 
       if (this.view.gameStage === 'exchange') {
         Row({ space: 10 }) {
           Button('重选')
             .layoutWeight(1)
-            .height(40)
+            .height(this.isLandscapeLayout() ? 34 : 40)
             .fontColor('#493928')
             .backgroundColor('#F3E8D1')
             .onClick(() => {
@@ -1258,7 +1315,7 @@ struct GameRoom {
             })
           Button('确认换三张 · ' + this.selectedCardIndexes.length.toString())
             .layoutWeight(2)
-            .height(40)
+            .height(this.isLandscapeLayout() ? 34 : 40)
             .backgroundColor('#C66136')
             .onClick(() => {
               this.playSelectedCards();
@@ -1269,7 +1326,7 @@ struct GameRoom {
         Row({ space: 8 }) {
           ForEach(this.mahjongTableChoices(), (choice: GameChoice) => {
             Button(choice.label)
-              .height(40)
+              .height(this.isLandscapeLayout() ? 34 : 40)
               .fontSize(11)
               .fontColor('#493928')
               .backgroundColor(choice.actionType === 'win' ? '#FFD36A' : '#F3E8D1')
@@ -1282,11 +1339,12 @@ struct GameRoom {
       }
     }
     .width('100%')
-    .padding(this.isLandscapeLayout() ? 9 : 13)
-    .borderRadius(20)
-    .border({ width: 2, color: '#C9A75D' })
+    .height('100%')
+    .padding({ left: this.isLandscapeLayout() ? 12 : 13, right: this.isLandscapeLayout() ? 12 : 13,
+      top: this.isLandscapeLayout() ? 45 : 13, bottom: this.isLandscapeLayout() ? 31 : 13 })
+    .borderRadius(this.isLandscapeLayout() ? 0 : 20)
+    .border({ width: this.isLandscapeLayout() ? 0 : 2, color: '#C9A75D' })
     .backgroundColor('#174F45')
-    .layoutWeight(1)
     .justifyContent(FlexAlign.SpaceBetween)
   }
 
@@ -1373,13 +1431,89 @@ struct GameRoom {
   }
 
   @Builder
+  JunqiLandscapeArena() {
+    Row({ space: 16 }) {
+      Grid() {
+        ForEach(this.view.board, (cell: string, index: number) => {
+          this.GameBoardCell(cell, index)
+        }, (cell: string, index: number) => index.toString() + '-' + cell)
+      }
+      .columnsTemplate('1fr 1fr 1fr 1fr 1fr')
+      .rowsTemplate('1fr '.repeat(12).trim())
+      .columnsGap(3)
+      .rowsGap(3)
+      .height('100%')
+      .aspectRatio(0.5)
+      .padding(7)
+      .borderRadius(12)
+      .backgroundColor('#C79B58')
+
+      Column({ space: 10 }) {
+        Text('军棋战场')
+          .fontSize(24)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FFF2CE')
+        Text('铁路可直行 · 工兵可转弯 · 行营受保护')
+          .fontSize(11)
+          .fontColor('#DDE8CF')
+        Text(this.view.status)
+          .width('100%')
+          .fontSize(15)
+          .lineHeight(23)
+          .fontColor('#FFF8E6')
+          .padding(14)
+          .borderRadius(14)
+          .backgroundColor('#173B2EBB')
+        if (this.view.prompt.length > 0) {
+          Text(this.view.prompt)
+            .width('100%')
+            .fontSize(11)
+            .lineHeight(18)
+            .fontColor('#E7D9B9')
+        }
+        Blank()
+        Text('点击己方棋子，再点击目标位置')
+          .fontSize(11)
+          .fontColor('#FFE28B')
+      }
+      .layoutWeight(1)
+      .height('100%')
+      .alignItems(HorizontalAlign.Start)
+      .padding({ top: 18, bottom: 18 })
+    }
+    .width('100%')
+    .height('100%')
+    .padding({ left: 18, right: 18, top: 54, bottom: 31 })
+    .backgroundColor('#284B38')
+  }
+
+  @Builder
+  ImmersiveGameSurface() {
+    if (this.view.gameId === GameId.LANDLORD || this.view.gameId === GameId.GUANDAN) {
+      this.LandlordTable()
+    } else if (this.view.gameId === GameId.SICHUAN_MAHJONG) {
+      this.MahjongTable()
+    } else if (this.view.gameId === GameId.JUNQI) {
+      this.JunqiLandscapeArena()
+    } else {
+      Column() {
+        this.ChineseChessArena()
+      }
+      .width('100%')
+      .height('100%')
+      .padding({ left: 10, right: 10, top: 52, bottom: 31 })
+      .backgroundColor('#D3A960')
+    }
+  }
+
+  @Builder
   LandscapeGameHeader() {
     Row({ space: 8 }) {
       Button('结束')
         .height(34)
         .fontSize(10)
-        .fontColor('#6B4330')
-        .backgroundColor('#F1E4CF')
+        .fontColor('#FFF5DE')
+        .backgroundColor('#281B15AA')
         .onClick(() => {
           this.leaveRoom();
         })
@@ -1388,25 +1522,25 @@ struct GameRoom {
         Text(this.view.title)
           .fontSize(17)
           .fontWeight(FontWeight.Bold)
+          .fontColor('#FFF8E8')
         Text('第 ' + this.view.round.toString() + ' 轮 · ' + this.view.currentPlayerName)
           .fontSize(9)
-          .fontColor('#7C6250')
+          .fontColor('#EAD9BE')
       }
       .alignItems(HorizontalAlign.Center)
       .layoutWeight(1)
-      Button(this.landscapeRequested ? '自动旋转' : '横屏')
+      Text('横屏对局')
         .height(34)
         .fontSize(10)
-        .fontColor('#4D3323')
-        .backgroundColor('#E9D8BC')
-        .onClick(() => {
-          this.toggleLandscape();
-        })
+        .fontColor('#FFE2A1')
+        .padding({ left: 10, right: 10, top: 9 })
+        .borderRadius(14)
+        .backgroundColor('#281B1577')
       Button('刷新')
         .height(34)
         .fontSize(10)
-        .fontColor('#4D3323')
-        .backgroundColor('#F1E4CF')
+        .fontColor('#FFF5DE')
+        .backgroundColor('#281B15AA')
         .onClick(() => {
           this.refresh();
         })
@@ -1414,30 +1548,30 @@ struct GameRoom {
     .width('100%')
     .height(48)
     .padding({ left: 12, right: 12, top: 5, bottom: 5 })
+    .border({ width: { bottom: 1 }, color: '#4DFFFFFF' })
+    .backgroundColor('#9917201D')
+    .backgroundBlurStyle(BlurStyle.Thin)
   }
 
   @Builder
   LandscapeGamePage() {
-    Column({ space: 4 }) {
+    Stack({ alignContent: Alignment.TopStart }) {
+      this.ImmersiveGameSurface()
       this.LandscapeGameHeader()
-      if (this.view.gameId === GameId.LANDLORD) {
-        this.LandlordTable()
-      } else if (this.view.gameId === GameId.SICHUAN_MAHJONG) {
-        this.MahjongTable()
-      } else {
-        this.ChineseChessArena()
-      }
       Text(this.message)
         .width('100%')
         .height(27)
         .fontSize(9)
-        .fontColor('#6D5543')
+        .fontColor('#FFF2D7')
         .padding({ left: 12, right: 12, top: 5 })
-        .backgroundColor('#F1E4CF')
+        .border({ width: { top: 1 }, color: '#33FFFFFF' })
+        .backgroundColor('#A617201D')
+        .backgroundBlurStyle(BlurStyle.Thin)
+        .position({ x: 0, y: Math.max(0, this.pageHeight - 27) })
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FAF4E9')
+    .backgroundColor('#174F45')
     .onAreaChange((oldValue: Area, newValue: Area) => {
       this.pageWidth = Number(newValue.width);
       this.pageHeight = Number(newValue.height);

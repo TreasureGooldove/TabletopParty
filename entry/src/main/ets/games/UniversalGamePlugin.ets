@@ -11,6 +11,7 @@ import {
 } from '../core/GameContracts';
 import { GameCatalog } from './GameCatalog';
 import { BuiltInContent } from '../services/BuiltInContent';
+import { LandlordPattern, LandlordPatternType, LandlordRules } from './LandlordRules';
 
 class SeededRandom {
   private value: number;
@@ -168,6 +169,7 @@ export class UniversalGamePlugin implements GamePlugin {
       this.playerDiscards.push([]);
     }
     this.prepare(players);
+    this.sortAllHands();
     return new ActionResult(true, this.status);
   }
 
@@ -208,6 +210,7 @@ export class UniversalGamePlugin implements GamePlugin {
       result = this.playClimbingCards(actorIndex, action, players);
     }
     if (result.success) {
+      this.sortAllHands();
       this.revision += 1;
     }
     return result;
@@ -1448,15 +1451,31 @@ export class UniversalGamePlugin implements GamePlugin {
     for (let index: number = 0; index < selectedIndexes.length; index += 1) {
       cards.push(this.hands[actorIndex][selectedIndexes[index]]);
     }
-    const pattern: ClimbingPattern = this.climbingPattern(cards);
-    if (pattern.type === ClimbingPatternType.INVALID) {
-      return new ActionResult(false, '所选牌不构成合法常用牌型');
-    }
-    if (this.lastPlayCards.length > 0 && this.lastPlayPlayer !== actorIndex) {
-      const previous: ClimbingPattern = this.climbingPattern(this.lastPlayCards);
-      if (!this.canBeatClimbing(pattern, previous)) {
-        return new ActionResult(false, '牌型或点数不能压过上一手');
+    let bombOrRocket: boolean = false;
+    if (this.definition.id === GameId.LANDLORD) {
+      const pattern: LandlordPattern = LandlordRules.analyze(cards);
+      if (pattern.type === LandlordPatternType.INVALID) {
+        return new ActionResult(false, '所选牌不构成合法斗地主牌型');
       }
+      if (this.lastPlayCards.length > 0 && this.lastPlayPlayer !== actorIndex) {
+        const previous: LandlordPattern = LandlordRules.analyze(this.lastPlayCards);
+        if (!LandlordRules.canBeat(pattern, previous)) {
+          return new ActionResult(false, '牌型、张数或点数不能压过上一手');
+        }
+      }
+      bombOrRocket = pattern.type === LandlordPatternType.BOMB || pattern.type === LandlordPatternType.ROCKET;
+    } else {
+      const pattern: ClimbingPattern = this.climbingPattern(cards);
+      if (pattern.type === ClimbingPatternType.INVALID) {
+        return new ActionResult(false, '所选牌不构成合法常用牌型');
+      }
+      if (this.lastPlayCards.length > 0 && this.lastPlayPlayer !== actorIndex) {
+        const previous: ClimbingPattern = this.climbingPattern(this.lastPlayCards);
+        if (!this.canBeatClimbing(pattern, previous)) {
+          return new ActionResult(false, '牌型或点数不能压过上一手');
+        }
+      }
+      bombOrRocket = pattern.type === ClimbingPatternType.BOMB || pattern.type === ClimbingPatternType.ROCKET;
     }
     selectedIndexes.sort((left: number, right: number): number => right - left);
     for (let index: number = 0; index < selectedIndexes.length; index += 1) {
@@ -1466,7 +1485,7 @@ export class UniversalGamePlugin implements GamePlugin {
     this.lastPlayCards = cards.slice();
     this.lastPlayPlayer = actorIndex;
     this.passCount = 0;
-    if (pattern.type === ClimbingPatternType.BOMB || pattern.type === ClimbingPatternType.ROCKET) {
+    if (bombOrRocket) {
       this.multiplier *= 2;
     }
     this.history.push(players[actorIndex].nickname + ' 打出 ' + cards.join(' ') +
@@ -1516,6 +1535,10 @@ export class UniversalGamePlugin implements GamePlugin {
       }
     }
     this.landlordIndex = winnerIndex;
+    if (highest <= 0) {
+      this.redealLandlord(players);
+      return new ActionResult(true, this.status);
+    }
     this.multiplier = Math.max(1, highest);
     for (let index: number = 51; index < this.deck.length; index += 1) {
       this.hands[winnerIndex].push(this.deck[index]);
@@ -1529,6 +1552,24 @@ export class UniversalGamePlugin implements GamePlugin {
     this.prompt = '选择一张或多张手牌后出牌；连续两家不出则重新领出';
     this.status = players[winnerIndex].nickname + ' 成为地主并先出牌';
     return new ActionResult(true, this.status);
+  }
+
+  private redealLandlord(players: RoomPlayer[]): void {
+    this.round += 1;
+    this.deck = [];
+    this.landlordBottom = [];
+    this.landlordBids = [];
+    this.landlordIndex = -1;
+    this.lastPlayCards = [];
+    this.lastPlayPlayer = -1;
+    this.passCount = 0;
+    this.turnIndex = 0;
+    for (let index: number = 0; index < this.hands.length; index += 1) {
+      this.hands[index] = [];
+      this.secrets[index] = '';
+    }
+    this.prepareClimbingCards(players);
+    this.status = '无人叫地主，已重新发牌 · ' + players[0].nickname + ' 先叫分';
   }
 
   private selectedCardIndexes(action: GameAction, handSize: number): number[] {
@@ -1675,6 +1716,67 @@ export class UniversalGamePlugin implements GamePlugin {
     }
     const ranks: string[] = ['3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A', '2'];
     return ranks.indexOf(card.substring(1));
+  }
+
+  private sortAllHands(): void {
+    for (let index: number = 0; index < this.hands.length; index += 1) {
+      if (this.definition.id === GameId.LANDLORD || this.definition.id === GameId.GUANDAN) {
+        this.hands[index].sort((left: string, right: string): number => this.compareClimbingCard(right, left));
+      } else if (this.definition.id === GameId.SICHUAN_MAHJONG) {
+        this.hands[index].sort((left: string, right: string): number => this.compareMahjongTile(right, left));
+      } else if (this.definition.id === GameId.COLOR_CLASH) {
+        this.hands[index].sort((left: string, right: string): number => this.compareColorCard(right, left));
+      }
+    }
+  }
+
+  private compareClimbingCard(left: string, right: string): number {
+    const rankDelta: number = this.cardRank(left) - this.cardRank(right);
+    if (rankDelta !== 0) {
+      return rankDelta;
+    }
+    const suits: string[] = ['♦', '♣', '♥', '♠'];
+    return suits.indexOf(left.substring(0, 1)) - suits.indexOf(right.substring(0, 1));
+  }
+
+  private compareMahjongTile(left: string, right: string): number {
+    const suits: string[] = ['条', '筒', '万'];
+    const suitDelta: number = suits.indexOf(left.substring(1)) - suits.indexOf(right.substring(1));
+    if (suitDelta !== 0) {
+      return suitDelta;
+    }
+    return Number(left.substring(0, 1)) - Number(right.substring(0, 1));
+  }
+
+  private compareColorCard(left: string, right: string): number {
+    const leftValue: number = this.colorCardStrength(left);
+    const rightValue: number = this.colorCardStrength(right);
+    if (leftValue !== rightValue) {
+      return leftValue - rightValue;
+    }
+    const colors: string[] = ['绿', '蓝', '黄', '红'];
+    return colors.indexOf(left.substring(0, 1)) - colors.indexOf(right.substring(0, 1));
+  }
+
+  private colorCardStrength(card: string): number {
+    if (card === '万能+4') {
+      return 14;
+    }
+    if (card === '万能变色') {
+      return 13;
+    }
+    const symbol: string = card.substring(1);
+    if (symbol === '+2') {
+      return 12;
+    }
+    if (symbol === '跳') {
+      return 11;
+    }
+    if (symbol === '反') {
+      return 10;
+    }
+    const value: number = Number(symbol);
+    return Number.isFinite(value) ? value : -1;
   }
 
   private ranksWithCount(counts: number[], count: number): number[] {

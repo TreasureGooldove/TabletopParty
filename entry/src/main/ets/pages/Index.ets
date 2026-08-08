@@ -15,6 +15,12 @@ struct Index {
   private store: PartyAppStore = PartyAppStore.getInstance();
 
   aboutToAppear(): void {
+    this.store.setGameFullscreen(false).catch(() => {
+      return;
+    });
+    this.store.setGameLandscape(false).catch(() => {
+      return;
+    });
     this.rebuildGames();
     this.partyGames = GameCatalog.partyTools();
     this.message = this.store.message;
@@ -82,7 +88,10 @@ struct Index {
     .width('100%')
     .padding(20)
     .borderRadius(24)
-    .backgroundColor('#543826')
+    .border({ width: 1, color: '#66FFFFFF' })
+    .backgroundColor('#B8543826')
+    .backgroundBlurStyle(BlurStyle.Thin)
+    .shadow({ radius: 28, color: '#260B1D31', offsetY: 10 })
   }
 
   @Builder
@@ -99,7 +108,8 @@ struct Index {
     .layoutWeight(1)
     .padding({ top: 8, bottom: 8 })
     .borderRadius(12)
-    .backgroundColor('#F8E9CD')
+    .border({ width: 1, color: '#80FFFFFF' })
+    .backgroundColor('#D9FFF8E9')
   }
 
   @Builder
@@ -123,10 +133,11 @@ struct Index {
     Text(title)
       .fontSize(12)
       .fontWeight(this.selectedCategory === id ? FontWeight.Bold : FontWeight.Regular)
-      .fontColor(this.selectedCategory === id ? '#FFF8EA' : '#604633')
+      .fontColor(this.selectedCategory === id ? '#FFFFFF' : '#354052')
       .padding({ left: 16, right: 16, top: 9, bottom: 9 })
       .borderRadius(18)
-      .backgroundColor(this.selectedCategory === id ? '#6B4330' : '#F1E4CF')
+      .border({ width: 1, color: this.selectedCategory === id ? '#80FFFFFF' : '#B3FFFFFF' })
+      .backgroundColor(this.selectedCategory === id ? '#0A59F7' : '#BFFFFFFF')
       .onClick(() => {
         this.selectedCategory = id;
         this.rebuildGames();
@@ -178,8 +189,9 @@ struct Index {
     .width('100%')
     .padding(14)
     .borderRadius(20)
-    .backgroundColor('#FFFDF8')
-    .shadow({ radius: 12, color: '#14000000', offsetY: 4 })
+    .border({ width: 1, color: '#CCFFFFFF' })
+    .backgroundColor('#D9FFFFFF')
+    .shadow({ radius: 18, color: '#180A254A', offsetY: 6 })
     .onClick(() => {
       this.openGame(game);
     })
@@ -194,7 +206,10 @@ struct Index {
           .height(46)
           .padding({ left: 14, right: 14 })
           .borderRadius(16)
-          .backgroundColor('#FFFDF8')
+          .border({ width: 1, color: '#CCFFFFFF' })
+          .backgroundColor('#BFFFFFFF')
+          .backgroundBlurStyle(BlurStyle.Thick)
+          .shadow({ radius: 20, color: '#180A254A', offsetY: 6 })
           .onChange((value: string) => {
             this.query = value;
             this.rebuildGames();
@@ -236,7 +251,8 @@ struct Index {
           .fontColor('#7A624F')
           .padding(12)
           .borderRadius(14)
-          .backgroundColor('#F1E4CF')
+          .border({ width: 1, color: '#B3FFFFFF' })
+          .backgroundColor('#BFFFFFFF')
       }
       .width('100%')
       .padding({ left: 16, right: 16, top: 16, bottom: 30 })
@@ -264,7 +280,10 @@ struct Index {
         .alignItems(HorizontalAlign.Start)
         .padding(20)
         .borderRadius(22)
-        .backgroundColor('#7A4B58')
+        .border({ width: 1, color: '#66FFFFFF' })
+        .backgroundColor('#B87A4B58')
+        .backgroundBlurStyle(BlurStyle.Thin)
+        .shadow({ radius: 24, color: '#24192A46', offsetY: 8 })
         ForEach(this.partyGames, (game: GameDefinition) => {
           this.GameCard(game)
         }, (game: GameDefinition) => game.id)
@@ -288,7 +307,7 @@ struct Index {
       Button('查看内容库')
         .width('100%')
         .height(48)
-        .backgroundColor('#6B4330')
+        .backgroundColor('#0A59F7')
         .onClick(() => {
           router.pushUrl({ url: 'pages/ContentLibrary' });
         })
@@ -340,7 +359,9 @@ struct Index {
     .width('100%')
     .padding(16)
     .borderRadius(18)
-    .backgroundColor('#FFFDF8')
+    .border({ width: 1, color: '#CCFFFFFF' })
+    .backgroundColor('#D9FFFFFF')
+    .shadow({ radius: 16, color: '#140A254A', offsetY: 5 })
     .onClick(() => {
       router.pushUrl({ url: url });
     })
@@ -370,7 +391,12 @@ struct Index {
     }
     .width('100%')
     .height('100%')
-    .backgroundColor('#FAF4E9')
-    .barBackgroundColor('#FFFDF8')
+    .linearGradient({
+      direction: GradientDirection.Bottom,
+      repeating: false,
+      colors: [['#F8FBFF', 0.0], ['#EAF2FF', 0.46], ['#FAF4E9', 1.0]]
+    })
+    .barBackgroundColor('#70FFFFFF')
+    .barBackgroundBlurStyle(BlurStyle.Thick)
   }
 }

@@ -23,4 +23,15 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY
 TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
+## DouZero
+
+`entry/src/main/ets/games/LandlordRules.ets` 中的斗地主牌型分析与合法动作生成，参考
+[kwai/DouZero](https://github.com/kwai/DouZero) 的 `douzero/env` 模块重新使用 ArkTS 实现，
+未逐字复制其源文件。
+
+Copyright 2021 Kwai Inc.
+
+Licensed under the Apache License, Version 2.0. 完整许可见
+`licenses/Apache-2.0.txt`。
+
 其余游戏封面、棋盘、棋子、卡牌与纹理均为本项目原创的 ArkUI/SVG 程序化素材。

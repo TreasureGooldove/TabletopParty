@@ -23,19 +23,22 @@ import {
   Want
 } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { window } from '@kit.ArkUI';
+import { router, window } from '@kit.ArkUI';
 import { NearbyGameService } from '../services/NearbyGameService';
 import { PartyAppStore } from '../viewmodels/PartyAppStore';
 
 const DOMAIN = 0x0000;
 
 export default class EntryAbility extends UIAbility {
+  private startupInvitePending: boolean = false;
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     NearbyGameService.getInstance().initialize(this.context);
     PartyAppStore.getInstance().initialize(this.context).catch(() => {
       return;
     });
-    this.receiveInvite(want);
+    this.startupInvitePending = this.receiveInvite(want);
+    this.requestStartupPermissions();
     try {
       this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     } catch (err) {
@@ -45,7 +48,11 @@ export default class EntryAbility extends UIAbility {
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    this.receiveInvite(want);
+    if (this.receiveInvite(want)) {
+      router.pushUrl({ url: 'pages/JoinRoom' }).catch(() => {
+        return;
+      });
+    }
   }
 
   onDestroy(): void {
@@ -63,7 +70,12 @@ export default class EntryAbility extends UIAbility {
         return;
       }
       hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
-      this.requestStartupPermissions();
+      if (this.startupInvitePending) {
+        this.startupInvitePending = false;
+        router.pushUrl({ url: 'pages/JoinRoom' }).catch(() => {
+          return;
+        });
+      }
     });
   }
 
@@ -82,11 +94,13 @@ export default class EntryAbility extends UIAbility {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
   }
 
-  private receiveInvite(want: Want): void {
+  private receiveInvite(want: Want): boolean {
     if (want.uri !== undefined && want.uri.length > 0) {
       const result = PartyAppStore.getInstance().receiveInvite(want.uri);
       hilog.info(DOMAIN, 'TabletopParty', '%{public}s', result.message);
+      return result.success;
     }
+    return false;
   }
 
   private async requestStartupPermissions(): Promise<void> {

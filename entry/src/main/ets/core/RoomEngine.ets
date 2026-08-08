@@ -13,6 +13,7 @@ import {
 } from './GameContracts';
 import { GameCatalog } from '../games/GameCatalog';
 import { GamePluginFactory } from '../games/GamePluginFactory';
+import { LandlordRules } from '../games/LandlordRules';
 
 export class RoomSession {
   public roomCode: string;
@@ -272,7 +273,13 @@ export class RoomEngine {
       }
     } else if (this.session.gameId === GameId.LANDLORD && aiView.phase === RoomPhase.REVEAL) {
       return this.act(new GameAction('bid', aiView.currentPlayerId, '', '', normal ? 2 : 1));
-    } else if (this.session.gameId === GameId.LANDLORD || this.session.gameId === GameId.GUANDAN) {
+    } else if (this.session.gameId === GameId.LANDLORD) {
+      const suggested: number[] = LandlordRules.suggest(aiView.hand, aiView.tableCards, normal);
+      if (suggested.length > 0) {
+        return this.act(new GameAction('play', aiView.currentPlayerId, suggested.join(',')));
+      }
+      return this.act(new GameAction('pass', aiView.currentPlayerId));
+    } else if (this.session.gameId === GameId.GUANDAN) {
       for (let index: number = 0; index < aiView.hand.length; index += 1) {
         const result: ActionResult = this.act(new GameAction('play', aiView.currentPlayerId, index.toString()));
         if (result.success) {

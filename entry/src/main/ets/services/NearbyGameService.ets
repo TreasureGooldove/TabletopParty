@@ -133,8 +133,10 @@ export class NearbyGameService {
         title: '桌游派对 · ' + this.roomCode,
         description: '加入身边好友的近场房间'
       });
-      const want = await systemShare.getWant(data);
-      await this.context.startAbility(want);
+      const controller: systemShare.ShareController = new systemShare.ShareController(data);
+      await controller.show(this.context, {
+        selectionMode: systemShare.SelectionMode.SINGLE
+      });
       return new ActionResult(true, '已打开系统分享面板');
     } catch (error) {
       return new ActionResult(false, '系统分享暂不可用，可复制房间码邀请');

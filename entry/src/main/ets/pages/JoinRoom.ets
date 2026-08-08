@@ -4,7 +4,6 @@ import { EnvelopeKind, RoomEnvelopeV3, RoomProtocolV3 } from '../core/RoomProtoc
 import { RoomTransportConfig, RoomTransportListener } from '../core/RoomTransport';
 import { GameCatalog } from '../games/GameCatalog';
 import { LanRoomTransport } from '../services/LanRoomTransport';
-import { NearbyGameService, NearbyRoomInfo } from '../services/NearbyGameService';
 import { RoomInvite } from '../services/RoomInviteService';
 import { PartyAppStore } from '../viewmodels/PartyAppStore';
 
@@ -31,10 +30,8 @@ class JoinListener implements RoomTransportListener {
 struct JoinRoom {
   @State roomCode: string = '';
   @State title: string = '附近房间';
-  @State message: string = '选择星闪直连或同一 Wi-Fi 加入';
-  @State rooms: NearbyRoomInfo[] = [];
+  @State message: string = '正在通过临时凭据加入房间';
   private store: PartyAppStore = PartyAppStore.getInstance();
-  private nearby: NearbyGameService = NearbyGameService.getInstance();
   private lan: LanRoomTransport = new LanRoomTransport();
   private protocol: RoomProtocolV3 = new RoomProtocolV3();
   private invite: RoomInvite | null = null;
@@ -52,6 +49,7 @@ struct JoinRoom {
     const definition: GameDefinition = GameCatalog.find(this.invite.gameId);
     this.roomCode = this.invite.roomCode;
     this.title = definition.title;
+    this.joinLan();
   }
 
   aboutToDisappear(): void {
@@ -89,17 +87,6 @@ struct JoinRoom {
     envelope.checksum = this.protocol.checksum(envelope.payload);
     const result: ActionResult = await this.lan.send(envelope);
     this.message = result.success ? '入局请求已发送，等待房主确认席位' : result.message;
-  }
-
-  private async scanNearLink(): Promise<void> {
-    const result: ActionResult = await this.nearby.scanRooms();
-    this.message = result.message;
-    this.rooms = this.nearby.roomResults();
-  }
-
-  private async connectNearLink(room: NearbyRoomInfo): Promise<void> {
-    const result: ActionResult = await this.nearby.connect(room.address);
-    this.message = result.message;
   }
 
   build() {
@@ -144,49 +131,13 @@ struct JoinRoom {
           .borderRadius(22)
           .backgroundColor('#5D3C29')
 
-          Button('使用同一 Wi-Fi 加密加入')
+          Button('重新发送加密入局请求')
             .width('100%')
             .height(50)
             .backgroundColor('#6B4330')
             .onClick(() => {
               this.joinLan();
             })
-          Button('扫描星闪房间')
-            .width('100%')
-            .height(48)
-            .fontColor('#315C43')
-            .backgroundColor('#DCEBDD')
-            .onClick(() => {
-              this.scanNearLink();
-            })
-
-          if (this.rooms.length > 0) {
-            ForEach(this.rooms, (room: NearbyRoomInfo) => {
-              Row() {
-                Column({ space: 3 }) {
-                  Text(room.deviceName)
-                    .fontSize(14)
-                    .fontWeight(FontWeight.Bold)
-                  Text(room.roomCode + ' · ' + room.signal.toString() + ' dBm')
-                    .fontSize(10)
-                    .fontColor('#7A624F')
-                }
-                .alignItems(HorizontalAlign.Start)
-                .layoutWeight(1)
-                Button('连接')
-                  .height(34)
-                  .backgroundColor('#7A4B58')
-                  .onClick(() => {
-                    this.connectNearLink(room);
-                  })
-              }
-              .width('100%')
-              .padding(14)
-              .borderRadius(16)
-              .backgroundColor('#FFFDF8')
-            }, (room: NearbyRoomInfo) => room.address)
-          }
-
           Text(this.message)
             .width('100%')
             .fontSize(12)
@@ -195,7 +146,7 @@ struct JoinRoom {
             .padding(13)
             .borderRadius(14)
             .backgroundColor('#F1E4CF')
-          Text('星闪不可用或权限被拒绝时，可返回使用同一 Wi-Fi 或在房主设备上采用热座模式。')
+          Text('碰一碰只传递一次性入局凭据；对局数据通过同一 Wi‑Fi 加密通道同步。无法连接时仍可在房主设备使用热座。')
             .fontSize(11)
             .lineHeight(18)
             .fontColor('#806A58')

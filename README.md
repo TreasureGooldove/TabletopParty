@@ -17,7 +17,7 @@
 - `RoomEngine`：房主裁决、版本号、席位、AI、私密玩家视图和简要战绩。
 - `RoomEnvelopeV3`：`TP3` 版本校验、约 2.8 KB 载荷分片、校验值、乱序重组、ACK、重试和去重。
 - `HotSeatTransport`、`LanRoomTransport`、`NearbyGameService`：分别承载本机热座、AES-256-GCM 局域网和星闪发现/可靠数据端口；附近连接入口当前隐藏。
-- Share Kit 与 `tabletopparty://room` 深链作为保留能力存在，不在当前大厅和房间页展示入口。
+- 房间页公开展示碰一碰与系统分享入口；Share Kit 发送 `tabletopparty://room` 一次性入局凭据，星闪扫描列表保持隐藏。
 - 本地只保存昵称、设置、内容包和简要战绩；结束房间后释放私密对局状态，临时密钥不落盘。
 
 ## 构建和测试
@@ -29,7 +29,7 @@ DevEco Studio SDK 位于本机 `D:\CODE\DevEco Studio\sdk`，应用使用 `devec
 & 'C:\Users\Lenovo\AppData\Roaming\npm\devecocli.cmd' run --module entry@default --device 192.168.1.20:42815 --product default --build-mode debug --skip-build
 ```
 
-当前本地测试为 18/18 通过，覆盖插件注册、12 款主游戏初始化、旁观者隐私、五子棋、黑白棋、象棋非法移动、军棋合法随机布阵与敌方军阶遮蔽、斗地主叫分/过牌、AI 时限、远程席位幂等、协议分片/校验/旧版拒绝、深链校验、内容目标及内容包停用持久化。
+当前本地测试为 26/26 通过，覆盖插件注册、12 款主游戏初始化、旁观者隐私、五子棋、黑白棋、象棋非法移动、军棋合法随机布阵与敌方军阶遮蔽、斗地主完整常用牌型/提示/叫分重发/整局完成、AI 时限、远程席位幂等、协议分片/校验/旧版拒绝、深链校验、内容目标及内容包停用持久化。
 
 签名 HAP 输出在：
 
